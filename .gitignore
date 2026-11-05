@@ -99,3 +99,5 @@ captures/
 .idea/caches
 .idea/modules.xml
 .idea/navEditor.xml
+# Local Netlify folder
+.netlify

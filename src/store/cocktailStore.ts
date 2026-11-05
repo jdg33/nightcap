@@ -18,6 +18,26 @@ interface CocktailStore {
   scaleCocktailRecipe: (cocktailId: string, servings: number) => CocktailIngredient[];
 }
 
+const PAGE_SIZE = 1000;
+
+/**
+ * Supabase caps every response at a fixed number of rows (1000 by default), so
+ * a single select silently drops the rest once a table outgrows it. Fetch big
+ * tables page by page instead, until a page comes back empty.
+ */
+async function fetchAllRows<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>
+): Promise<{ data: T[] | null; error: any }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await buildQuery(from, from + PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    if (!data || data.length === 0) break;
+    rows.push(...data);
+  }
+  return { data: rows, error: null };
+}
+
 export const useCocktailStore = create<CocktailStore>((set, get) => ({
   cocktails: [],
   ingredients: [],
@@ -44,8 +64,17 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
       }
 
       const [cocktailsResponse, cocktailIngredientsResponse] = await Promise.all([
-        supabase.from('cocktails').select('*').order('name'),
-        supabase.from('cocktail_ingredients').select('*, ingredient:ingredients(*)').order('cocktail_id')
+        fetchAllRows<Cocktail>((from, to) =>
+          supabase.from('cocktails').select('*').order('name').order('id').range(from, to)
+        ),
+        fetchAllRows<CocktailIngredient>((from, to) =>
+          supabase
+            .from('cocktail_ingredients')
+            .select('*, ingredient:ingredients(*)')
+            .order('cocktail_id')
+            .order('id')
+            .range(from, to)
+        )
       ]);
 
       if (cocktailsResponse.error) {
@@ -76,7 +105,9 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
       console.log('Fetched cocktails:', cocktailsResponse.data?.length || 0);
       console.log('Fetched cocktail ingredients:', cocktailIngredientsResponse.data?.length || 0);
 
-      const cocktails = cocktailsResponse.data || [];
+      // Cocktails hidden via is_private (e.g. one a user un-shared from the iOS app)
+      // must not show up on the site.
+      const cocktails = (cocktailsResponse.data || []).filter(cocktail => !cocktail.is_private);
       const cocktailIngredients = cocktailIngredientsResponse.data || [];
 
       await offlineCache.saveCocktails(cocktails);
@@ -108,10 +139,9 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
         return;
       }
 
-      const { data, error } = await supabase
-        .from('ingredients')
-        .select('*')
-        .order('name');
+      const { data, error } = await fetchAllRows<Ingredient>((from, to) =>
+        supabase.from('ingredients').select('*').order('name').order('id').range(from, to)
+      );
 
       if (error) {
         console.error('Ingredients error:', error);

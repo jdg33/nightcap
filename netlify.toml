@@ -1,0 +1,20 @@
+# Netlify build settings, so the site can be built and deployed straight from this repo.
+#
+# Needs two environment variables set in Netlify (Site configuration > Environment variables):
+#   VITE_SUPABASE_URL
+#   VITE_SUPABASE_ANON_KEY   (the public "anon" key, same one the iOS app uses)
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Some dependencies (react-native, auth-ui) have conflicting peer requirements.
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Single-page app: serve index.html for deep links like /cocktail/<id>
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

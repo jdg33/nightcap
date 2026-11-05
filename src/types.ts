@@ -25,6 +25,8 @@ export interface Cocktail {
   created_at: string;
   created_by: string | null;
   author: string | null;
+  /** Set by the iOS app when a shared cocktail is un-shared. Hidden everywhere. */
+  is_private?: boolean | null;
 }
 
 export interface CocktailIngredient {
