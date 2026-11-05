@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { GlassWater, Edit, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { offlineCache } from '../lib/offlineCache';
 import { useAuthStore } from '../store/authStore';
 import { useCocktailStore } from '../store/cocktailStore';
 import type { Ingredient, Cocktail, CocktailIngredient, IngredientBrand } from '../types';
@@ -10,7 +11,7 @@ export default function IngredientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { session } = useAuthStore();
-  const { ingredients } = useCocktailStore();
+  const { ingredients, fetchIngredients } = useCocktailStore();
   const [ingredient, setIngredient] = useState<Ingredient | null>(null);
   const [cocktails, setCocktails] = useState<Cocktail[]>([]);
   const [brands, setBrands] = useState<IngredientBrand[]>([]);
@@ -135,6 +136,8 @@ export default function IngredientDetail() {
 
       if (error) throw error;
 
+      await offlineCache.clearCache();
+      await fetchIngredients(true);
       navigate('/ingredients');
     } catch (error) {
       console.error('Error deleting ingredient:', error);

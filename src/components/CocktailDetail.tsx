@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Star, Edit, Trophy, Plus, Trash2, ArrowLeft, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { offlineCache } from '../lib/offlineCache';
 import { useAuthStore } from '../store/authStore';
 import { useCocktailStore } from '../store/cocktailStore';
 import { share, haptics } from '../lib/ios';
@@ -20,18 +21,44 @@ export default function CocktailDetail() {
   const [logs, setLogs] = useState<CocktailLog[]>([]);
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [displayUnit, setDisplayUnit] = useState<'oz' | 'ml'>('oz');
   const [newLog, setNewLog] = useState({
     rating: 5,
     notes: ''
   });
 
+  const convertUnit = (amount: number, fromUnit: string, toUnit: 'oz' | 'ml'): { amount: number; unit: string } => {
+    const ozToMl = 29.5735;
+
+    if (fromUnit === 'oz' && toUnit === 'ml') {
+      return { amount: Math.round(amount * ozToMl * 10) / 10, unit: 'ml' };
+    } else if (fromUnit === 'ml' && toUnit === 'oz') {
+      return { amount: Math.round((amount / ozToMl) * 100) / 100, unit: 'oz' };
+    }
+    return { amount, unit: fromUnit };
+  };
+
   const cocktail = cocktails.find(c => c.id === id);
   const recipe = cocktailIngredients
     .filter(ci => ci.cocktail_id === id)
-    .map(ci => ({
-      ...ci,
-      amount: ci.amount * servings
-    }));
+    .map(ci => {
+      const scaledAmount = ci.amount * servings;
+      const unit = ci.unit || '';
+
+      if ((unit === 'oz' || unit === 'ml') && unit !== displayUnit) {
+        const converted = convertUnit(scaledAmount, unit, displayUnit);
+        return {
+          ...ci,
+          amount: converted.amount,
+          unit: converted.unit
+        };
+      }
+
+      return {
+        ...ci,
+        amount: scaledAmount
+      };
+    });
 
   const sortedCocktails = [...cocktails].sort((a, b) => a.name.localeCompare(b.name));
   const currentIndex = sortedCocktails.findIndex(c => c.id === id);
@@ -114,6 +141,8 @@ export default function CocktailDetail() {
 
       if (error) throw error;
 
+      await offlineCache.clearCache();
+      await fetchCocktails();
       navigate('/');
     } catch (error) {
       console.error('Error deleting cocktail:', error);
@@ -144,6 +173,12 @@ export default function CocktailDetail() {
 
     if (success) {
       await haptics.success();
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Recipe copied to clipboard!');
+      }).catch(() => {
+        alert('Unable to share. Your browser may not support sharing.');
+      });
     }
   }
 
@@ -267,15 +302,40 @@ export default function CocktailDetail() {
           )}
 
           <div className="mt-4 sm:mt-6">
-            <div className="flex items-center space-x-3 sm:space-x-4 mb-4">
-              <label className="text-sm sm:text-base text-gray-700 dark:text-gray-300">Servings:</label>
-              <input
-                type="number"
-                min="1"
-                value={servings}
-                onChange={e => setServings(Number(e.target.value))}
-                className="w-16 sm:w-20 px-2 py-1 text-sm sm:text-base border rounded dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <label className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">Servings:</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={servings}
+                  onChange={e => setServings(Number(e.target.value))}
+                  className="w-16 sm:w-20 px-2 py-1 text-sm sm:text-base border rounded dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-300">Units:</span>
+                <button
+                  onClick={() => setDisplayUnit('oz')}
+                  className={`px-4 py-2 text-sm sm:text-base font-medium rounded-md transition-colors ${
+                    displayUnit === 'oz'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  oz
+                </button>
+                <button
+                  onClick={() => setDisplayUnit('ml')}
+                  className={`px-4 py-2 text-sm sm:text-base font-medium rounded-md transition-colors ${
+                    displayUnit === 'ml'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  ml
+                </button>
+              </div>
             </div>
 
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3">Ingredients</h2>

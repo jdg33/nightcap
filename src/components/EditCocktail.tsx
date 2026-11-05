@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { offlineCache } from '../lib/offlineCache';
 import { useCocktailStore } from '../store/cocktailStore';
 import type { Ingredient, Cocktail } from '../types';
 
@@ -27,7 +28,7 @@ const UNITS = [
 export default function EditCocktail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { ingredients, fetchIngredients } = useCocktailStore();
+  const { ingredients, fetchIngredients, fetchCocktails } = useCocktailStore();
   const [formData, setFormData] = useState<Partial<Cocktail>>({
     name: '',
     description: '',
@@ -112,6 +113,8 @@ export default function EditCocktail() {
           );
       }
 
+      await offlineCache.clearCache();
+      await fetchCocktails();
       navigate(`/cocktail/${id}`);
     } catch (error) {
       console.error('Error updating cocktail:', error);

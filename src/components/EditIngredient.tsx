@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { offlineCache } from '../lib/offlineCache';
+import { useCocktailStore } from '../store/cocktailStore';
 import type { Ingredient, IngredientBrand } from '../types';
 
 const SPIRIT_SUBTYPES = {
@@ -22,6 +24,7 @@ const SPIRIT_SUBTYPES = {
 export default function EditIngredient() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { fetchIngredients } = useCocktailStore();
   const [formData, setFormData] = useState<Partial<Ingredient>>({
     name: '',
     category: '',
@@ -100,10 +103,10 @@ export default function EditIngredient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       // If a subtype is selected, include it in the name
-      const finalName = subtype 
+      const finalName = subtype
         ? `${subtype} ${formData.name}`
         : formData.name;
 
@@ -115,6 +118,8 @@ export default function EditIngredient() {
         })
         .eq('id', id);
 
+      await offlineCache.clearCache();
+      await fetchIngredients();
       navigate(`/ingredient/${id}`);
     } catch (error) {
       console.error('Error updating ingredient:', error);

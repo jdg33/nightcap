@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { offlineCache } from '../lib/offlineCache';
+import { useCocktailStore } from '../store/cocktailStore';
 import type { IngredientBrand } from '../types';
 
 const SPIRIT_SUBTYPES = {
@@ -21,6 +23,7 @@ const SPIRIT_SUBTYPES = {
 
 export default function CreateIngredient() {
   const navigate = useNavigate();
+  const { fetchIngredients } = useCocktailStore();
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -71,6 +74,8 @@ export default function CreateIngredient() {
         if (brandsError) throw brandsError;
       }
 
+      await offlineCache.clearCache();
+      await fetchIngredients();
       navigate('/ingredients');
     } catch (error) {
       console.error('Error creating ingredient:', error);

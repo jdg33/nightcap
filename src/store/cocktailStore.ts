@@ -10,8 +10,8 @@ interface CocktailStore {
   cocktailIngredients: CocktailIngredient[];
   loading: boolean;
   error: string | null;
-  fetchCocktails: () => Promise<void>;
-  fetchIngredients: () => Promise<void>;
+  fetchCocktails: (forceRefresh?: boolean) => Promise<void>;
+  fetchIngredients: (forceRefresh?: boolean) => Promise<void>;
   fetchUserIngredients: () => Promise<void>;
   toggleUserIngredient: (ingredientId: string) => Promise<void>;
   getAvailableCocktails: () => Cocktail[];
@@ -26,7 +26,7 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
   loading: false,
   error: null,
 
-  fetchCocktails: async () => {
+  fetchCocktails: async (forceRefresh = false) => {
     try {
       set({ loading: true, error: null });
 
@@ -34,7 +34,7 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
       const cachedCocktailIngredients = await offlineCache.getCocktailIngredients();
       const isCacheValid = await offlineCache.isCacheValid();
 
-      if (cachedCocktails && cachedCocktailIngredients && isCacheValid) {
+      if (cachedCocktails && cachedCocktailIngredients && isCacheValid && !forceRefresh) {
         set({
           cocktails: cachedCocktails,
           cocktailIngredients: cachedCocktailIngredients,
@@ -96,14 +96,14 @@ export const useCocktailStore = create<CocktailStore>((set, get) => ({
     }
   },
 
-  fetchIngredients: async () => {
+  fetchIngredients: async (forceRefresh = false) => {
     try {
       set({ error: null });
 
       const cachedIngredients = await offlineCache.getIngredients();
       const isCacheValid = await offlineCache.isCacheValid();
 
-      if (cachedIngredients && isCacheValid) {
+      if (cachedIngredients && isCacheValid && !forceRefresh) {
         set({ ingredients: cachedIngredients });
         return;
       }

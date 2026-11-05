@@ -32,6 +32,18 @@ export default function IngredientList({ userOnly = false }: Props) {
     }
   }, [fetchIngredients, fetchUserIngredients, session]);
 
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchIngredients(true);
+      if (session) {
+        fetchUserIngredients();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchIngredients, fetchUserIngredients, session]);
+
   const userIngredientIds = new Set(userIngredients.map(ui => ui.ingredient_id));
   
   // Get unique categories

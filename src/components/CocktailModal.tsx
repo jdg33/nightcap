@@ -21,6 +21,7 @@ export default function CocktailModal({ cocktailId, onClose }: Props) {
     fetchCocktails,
   } = useCocktailStore();
   const [servings, setServings] = useState(1);
+  const [displayUnit, setDisplayUnit] = useState<'oz' | 'ml'>('oz');
   const [logs, setLogs] = useState<CocktailLog[]>([]);
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -29,13 +30,28 @@ export default function CocktailModal({ cocktailId, onClose }: Props) {
     notes: ''
   });
 
+  const convertUnit = (amount: number, fromUnit: string, toUnit: 'oz' | 'ml'): { amount: number; unit: string } => {
+    const ozToMl = 29.5735;
+    if (fromUnit === 'oz' && toUnit === 'ml') {
+      return { amount: Math.round(amount * ozToMl * 10) / 10, unit: 'ml' };
+    } else if (fromUnit === 'ml' && toUnit === 'oz') {
+      return { amount: Math.round((amount / ozToMl) * 100) / 100, unit: 'oz' };
+    }
+    return { amount, unit: fromUnit };
+  };
+
   const cocktail = cocktails.find(c => c.id === cocktailId);
   const recipe = cocktailIngredients
     .filter(ci => ci.cocktail_id === cocktailId)
-    .map(ci => ({
-      ...ci,
-      amount: ci.amount * servings
-    }));
+    .map(ci => {
+      const scaledAmount = ci.amount * servings;
+      const unit = ci.unit || '';
+      if ((unit === 'oz' || unit === 'ml') && unit !== displayUnit) {
+        const converted = convertUnit(scaledAmount, unit, displayUnit);
+        return { ...ci, amount: converted.amount, unit: converted.unit };
+      }
+      return { ...ci, amount: scaledAmount };
+    });
 
   useEffect(() => {
     if (session) {
@@ -289,15 +305,40 @@ export default function CocktailModal({ cocktailId, onClose }: Props) {
 
             {/* Content */}
             <div className="mt-4 sm:mt-6">
-              <div className="flex items-center space-x-3 sm:space-x-4 mb-4">
-                <label className="text-sm sm:text-base text-gray-700 dark:text-gray-300">Servings:</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={servings}
-                  onChange={e => setServings(Number(e.target.value))}
-                  className="w-16 sm:w-20 px-2 py-1 text-sm sm:text-base border rounded dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                />
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4">
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <label className="text-sm sm:text-base text-gray-700 dark:text-gray-300">Servings:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={servings}
+                    onChange={e => setServings(Number(e.target.value))}
+                    className="w-16 sm:w-20 px-2 py-1 text-sm sm:text-base border rounded dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm sm:text-base text-gray-700 dark:text-gray-300">Units:</span>
+                  <button
+                    onClick={() => setDisplayUnit('oz')}
+                    className={`px-3 py-1 text-sm sm:text-base font-medium rounded-md transition-colors ${
+                      displayUnit === 'oz'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                  >
+                    oz
+                  </button>
+                  <button
+                    onClick={() => setDisplayUnit('ml')}
+                    className={`px-3 py-1 text-sm sm:text-base font-medium rounded-md transition-colors ${
+                      displayUnit === 'ml'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                    }`}
+                  >
+                    ml
+                  </button>
+                </div>
               </div>
 
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3">Ingredients</h2>

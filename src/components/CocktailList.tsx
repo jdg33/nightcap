@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, X, ArrowUpDown, Star, Trophy, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, X, ArrowUpDown, Star, Trophy, Filter, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useCocktailStore } from '../store/cocktailStore';
 import { useAuthStore } from '../store/authStore';
 import { haptics } from '../lib/ios';
+import { exportCocktailsToCSV } from '../lib/exportCocktails';
 import CocktailModal from './CocktailModal';
 import PullToRefresh from './PullToRefresh';
 import type { Ingredient, Cocktail } from '../types';
@@ -42,7 +43,7 @@ export default function CocktailList() {
 
   const handleRefresh = async () => {
     await haptics.success();
-    await Promise.all([fetchCocktails(), fetchIngredients()]);
+    await Promise.all([fetchCocktails(true), fetchIngredients(true)]);
   };
 
   useEffect(() => {
@@ -94,6 +95,11 @@ export default function CocktailList() {
     setShowHallOfFame(false);
     setShowFilters(false);
     setCurrentPage(1);
+  };
+
+  const handleExport = async () => {
+    await haptics.light();
+    exportCocktailsToCSV({ cocktails, cocktailIngredients, ingredients });
   };
 
   const sortCocktails = (cocktails: Cocktail[]) => {
@@ -231,6 +237,16 @@ export default function CocktailList() {
         </div>
 
         <div className="flex gap-2">
+          {/* Export button */}
+          <button
+            onClick={handleExport}
+            className="btn-secondary flex items-center gap-2 whitespace-nowrap"
+            title="Export to CSV"
+          >
+            <Download className="h-5 w-5" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+
           {/* Sort button with dropdown */}
           <div className="relative sort-menu-container">
             <button
