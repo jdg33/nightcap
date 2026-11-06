@@ -15,8 +15,6 @@ interface GeneratedCocktail {
   }>;
 }
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
 export default function CocktailGenerator() {
   const navigate = useNavigate();
   const { ingredients, fetchIngredients } = useCocktailStore();
@@ -33,11 +31,6 @@ export default function CocktailGenerator() {
     setIsGenerating(true);
     setError(null);
 
-    if (!GEMINI_API_KEY) {
-      setError('Gemini API key is not configured. Please add VITE_GEMINI_API_KEY to your environment variables.');
-      setIsGenerating(false);
-      return;
-    }
 
     try {
       const availableIngredients = ingredients.map(ing => ing.name).join(', ');
@@ -71,18 +64,13 @@ Requirements:
 
 Return only the JSON object, no other text.`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      // The Gemini key lives on the server (netlify/functions/generate.mjs), never in the browser.
+      const response = await fetch('/.netlify/functions/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
+        body: JSON.stringify({ prompt })
       });
 
       if (!response.ok) {

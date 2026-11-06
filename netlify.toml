@@ -1,12 +1,17 @@
 # Netlify build settings, so the site can be built and deployed straight from this repo.
 #
-# Needs two environment variables set in Netlify (Site configuration > Environment variables):
+# Needs these environment variables set in Netlify (Site configuration > Environment variables):
 #   VITE_SUPABASE_URL
 #   VITE_SUPABASE_ANON_KEY   (the public "anon" key, same one the iOS app uses)
+#   GEMINI_API_KEY           (SECRET. Used only by netlify/functions/generate.mjs on the server.
+#                             Never name it VITE_*: that would publish it in the browser bundle.)
 
 [build]
   command = "npm run build"
   publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
